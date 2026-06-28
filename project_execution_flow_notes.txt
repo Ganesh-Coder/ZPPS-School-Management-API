@@ -1,0 +1,61 @@
+Project Execution Flow - small_sms_api
+
+1. Startup
+   - Command: `uvicorn app.main:app --reload`
+   - Entry point: `app/main.py`
+   - Creates FastAPI app instance with `title=settings.PROJECT_NAME`
+   - Loads configuration from `app/core/config.py` using `.env`
+   - Adds CORS middleware allowing all origins
+   - Includes `api_router` from `app/api/api_v1/api.py` with prefix `/api/v1`
+   - Defines a health endpoint at `/health`
+
+2. Router registration
+   - `app/api/api_v1/api.py` creates `api_router = APIRouter()`
+   - Includes the route modules:
+     - `grade`
+     - `subject`
+     - `school_year`
+     - `student`
+     - `registration`
+     - `nationality`
+
+3. Dependency handling
+   - `app/api/deps.py` defines `get_db()` and `CommonQueryParams`
+   - `get_db()` yields a SQLAlchemy session from `SessionLocal` and closes it after request
+   - `CommonQueryParams` handles query parameters `skip` and `limit`
+
+4. Database session and models
+   - `app/db/session.py` builds SQLAlchemy engine from `settings.SQLALCHEMY_DATABASE_URI`
+   - `SessionLocal = sessionmaker(...)`
+   - `app/db/base.py` imports all models so Alembic metadata includes them
+   - `app/db/base_class.py` defines automatic table name generation
+
+5. Request flow example: GET /api/v1/students
+   - FastAPI matches request to route in `app/api/api_v1/routes/student.py`
+   - `get_students()` depends on `db` and `commons`
+   - `get_db()` creates a DB session
+   - `commons` parses `skip` and `limit`
+   - Handler calls `crud.student.get_multi(db, skip=..., limit=...)`
+   - `app/crud/base.py` executes the query and returns model objects
+   - FastAPI serializes results with `schemas.StudentInDB`
+
+6. CRUD layer
+   - `app/crud/base.py` defines generic CRUD methods: `get_multi`, `get`, `create`, `update`, `remove`
+   - `app/crud/crud_student.py` instantiates `CRUDStudent(Student)`
+   - Similar patterns exist for other models via `app/crud/*`
+
+7. Schemas and validation
+   - `app/schemas/student.py` defines Pydantic schemas for create/update and response models
+   - Input validation occurs before handler logic
+   - `StudentInDB` uses `orm_mode = True` for SQLAlchemy model output
+
+8. Configuration
+   - `app/core/config.py` uses Pydantic `BaseSettings`
+   - Reads DB host/user/password/name from `.env`
+   - Assembles `SQLALCHEMY_DATABASE_URI` if not provided directly
+
+9. Important notes
+   - API routes are mounted under `/api/v1`
+   - Health check endpoint is `/health`
+   - The DB is PostgreSQL-based and must exist before migrations
+   - Alembic migrations live in `alembic/`

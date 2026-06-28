@@ -12,8 +12,9 @@ from pydantic import (
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "FastAPI School Management System"
-    API_V1_STR: str = "/api/v1"
+    PROJECT_NAME: str = "ZPPS School Management System"
+    API_V1_STR: str = "/api"
+    SECRET_KEY: str = "change-me-in-production"
     
     DB_HOST: str
     DB_USER: str
